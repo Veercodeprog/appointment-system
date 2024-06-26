@@ -1,6 +1,40 @@
 import React from "react";
 import AdminProvider from "./adminProvider";
+import axiosPrivate from "../api/axios";
+import useAuth from "../hooks/useAuth";
+import { useEffect } from "react";
 const AppointmentManagement = () => {
+  const [bookings, setBookings] = React.useState([]);
+  useEffect(() => {
+    getAllBookings();
+  }, []);
+  const getAllBookings = async () => {
+    try {
+      const response = await axiosPrivate.get("/bookings");
+      setBookings(response.data);
+    } catch (error) {
+      console.error("Error getting services:", error);
+    }
+  };
+
+  const handleApproveBooking = async (bookingId) => {
+    try {
+      await axiosPrivate.put(`/${bookingId}/approve`);
+      // Refresh bookings after approval
+      getAllBookings();
+    } catch (error) {
+      console.error("Error approving booking:", error);
+    }
+  };
+  const handleDeleteBooking = async (bookingId) => {
+    try {
+      await axiosPrivate.delete(`/${bookingId}`);
+      // Refresh bookings after deletion
+      getAllBookings();
+    } catch (error) {
+      console.error("Error deleting booking:", error);
+    }
+  };
   return (
     <AdminProvider>
       <main className="w-full">
@@ -58,48 +92,48 @@ const AppointmentManagement = () => {
                               scope="col"
                               className="p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                             >
+                              Status
+                            </th>
+                            <th
+                              scope="col"
+                              className="p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                            >
                               Actions
                             </th>
                           </tr>
                         </thead>
                         <tbody className="bg-white">
-                          <tr>
-                            <td className="p-4">John Doe</td>
-                            <td className="p-4">Service 1</td>
-                            <td className="p-4">$100</td>
-                            <td className="p-4">2024-07-01</td>
-                            <td className="p-4">9 AM - 10 AM</td>
-                            <td className="p-4 space-x-2">
-                              <button className="text-blue-600 hover:text-blue-900">
-                                View
-                              </button>
-                              <button className="text-indigo-600 hover:text-indigo-900">
-                                Edit
-                              </button>
-                              <button className="text-red-600 hover:text-red-900">
-                                Delete
-                              </button>
-                            </td>
-                          </tr>
-                          <tr>
-                            <td className="p-4">Jane Smith</td>
-                            <td className="p-4">Service 2</td>
-                            <td className="p-4">$150</td>
-                            <td className="p-4">2024-07-02</td>
-                            <td className="p-4">10 AM - 11 AM</td>
-                            <td className="p-4 space-x-2">
-                              <button className="text-blue-600 hover:text-blue-900">
-                                View
-                              </button>
-                              <button className="text-indigo-600 hover:text-indigo-900">
-                                Edit
-                              </button>
-                              <button className="text-red-600 hover:text-red-900">
-                                Delete
-                              </button>
-                            </td>
-                          </tr>
-                          {/* <!-- Additional appointment rows as needed --> */}
+                          {bookings.map((booking) => (
+                            <tr>
+                              <td className="p-4">{booking.createdBy} </td>
+                              <td className="p-4"> {booking.serviceName} </td>
+                              <td className="p-4"> {booking.charges} </td>
+                              <td className="p-4">{booking.appointmentDate}</td>
+                              <td className="p-4">{booking.appointmentTime}</td>
+                              <td className="p-4">
+                                {booking.status ? "Approved" : "Pending"}
+                              </td>
+
+                              <td className="p-4 space-x-2">
+                                <button
+                                  className="text-indigo-600 hover:text-indigo-900"
+                                  onClick={() =>
+                                    handleApproveBooking(booking._id)
+                                  }
+                                >
+                                  Approve
+                                </button>
+                                <button
+                                  className="text-red-600 hover:text-red-900"
+                                  onClick={() =>
+                                    handleDeleteBooking(booking._id)
+                                  }
+                                >
+                                  Delete
+                                </button>{" "}
+                              </td>
+                            </tr>
+                          ))}
                         </tbody>
                       </table>
                     </div>
