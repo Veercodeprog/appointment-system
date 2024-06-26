@@ -3,6 +3,7 @@ import useAuth from "../hooks/useAuth";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import axios from "../api/axios";
 const LOGIN_URL = "/auth";
+const BASE_URL = process.env.REACT_APP_BASE_URL;
 const Login = () => {
   const { auth, setAuth, persist, setPersist } = useAuth();
   const navigate = useNavigate();
@@ -21,10 +22,11 @@ const Login = () => {
     setErrMsg("");
   }, [user, pwd]);
   const handleSubmit = async (e) => {
+    console.log("BASE_URL", BASE_URL);
     e.preventDefault();
     try {
       const response = await axios.post(
-        LOGIN_URL,
+        `${BASE_URL}${LOGIN_URL}`,
         JSON.stringify({ user, pwd }),
         {
           headers: { "Content-Type": "application/json" },
