@@ -1,6 +1,85 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import AdminProvider from "./adminProvider";
+import axiosPrivate from "../api/axios";
+import useAuth from "../hooks/useAuth";
+
 const BookAppointment = () => {
+  const [services, setServices] = useState([]);
+  const [selectedTime, setSelectedTime] = useState("");
+
+  const [selectedDates, setSelectedDates] = useState({}); // Object to store selected date for each service
+  const { auth } = useAuth();
+  useEffect(() => {
+    console.log("auth", auth);
+    getAllServices();
+  }, []);
+
+  const getAllServices = async () => {
+    try {
+      const response = await axiosPrivate.get("/services");
+      const initialSelectedDates = response.data.reduce((acc, service) => {
+        acc[service._id] = new Date().toISOString().split("T")[0]; // Initialize with today's date for each service
+        return acc;
+      }, {});
+      setServices(response.data);
+      setSelectedDates(initialSelectedDates);
+      console.log("Services:", response.data);
+    } catch (error) {
+      console.error("Error getting services:", error);
+    }
+  };
+  const bookAppointment = async (
+    serviceName,
+    charges,
+    selectedDate,
+    selectedTime
+  ) => {
+    const createdBy = auth.username;
+
+    try {
+      const response = await axiosPrivate.post("/booking", {
+        serviceName,
+        charges: 100, // Adjust charges as per your service schema
+        appointmentDate: selectedDate,
+        appointmentTime: selectedTime,
+        createdBy: auth.username, // Assuming you have user authentication
+      });
+
+      console.log(response.data.message);
+      // Refresh services after booking
+      getAllServices();
+    } catch (error) {
+      console.error("Error booking appointment:", error);
+    }
+  };
+
+  const handleDateChange = (event, serviceId) => {
+    const { value } = event.target;
+    setSelectedDates({
+      ...selectedDates,
+      [serviceId]: value,
+    });
+  };
+
+  const getDayOfWeek = (date) => {
+    const dayOfWeek = new Date(date).toLocaleDateString("en-US", {
+      weekday: "long",
+    });
+    return dayOfWeek;
+  };
+
+  const getTimeSlotsForDay = (service, dayOfWeek) => {
+    const selectedDate = selectedDates[service._id];
+    // also exclude the slots checking from booking table in the database
+    // for bboking Date  and  booking time
+    // is selected datte is 26 june then check for the date in the booking table
+    // if the date is present then check for the time slots
+    // then exclude the time slots from the timing slots
+    return service.timingSlots
+      .filter((slot) => slot.day === dayOfWeek && slot.available)
+      .map((slot) => <option key={slot.time}>{slot.time}</option>);
+  };
+
   return (
     <AdminProvider>
       <main className="w-full">
@@ -40,13 +119,13 @@ const BookAppointment = () => {
                               scope="col"
                               className="p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                             >
-                              Available Timing Slots
+                              Select Date
                             </th>
                             <th
                               scope="col"
                               className="p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                             >
-                              Select Date
+                              Available timing Slots
                             </th>
                             <th
                               scope="col"
@@ -57,60 +136,53 @@ const BookAppointment = () => {
                           </tr>
                         </thead>
                         <tbody className="bg-white">
-                          <tr>
-                            <td className="p-4">Service 1</td>
-                            <td className="p-4">$100</td>
-                            <td className="p-4">
-                              <select className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
-                                <option>9 AM - 10 AM</option>
-                                <option>10 AM - 11 AM</option>
-                                <option>11 AM - 12 PM</option>
-                                <option>1 PM - 2 PM</option>
-                                <option>2 PM - 3 PM</option>
-                                <option>3 PM - 4 PM</option>
-                                <option>4 PM - 5 PM</option>
-                              </select>
-                            </td>
-                            <td className="p-4">
-                              <input
-                                type="date"
-                                className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-                              />
-                            </td>
-                            <td className="p-4">
-                              <button className="text-sm font-medium text-white bg-cyan-600 hover:bg-cyan-700 rounded-lg p-2">
-                                Book
-                              </button>
-                            </td>
-                          </tr>
-                          <tr>
-                            <td className="p-4">Service 2</td>
-                            <td className="p-4">$150</td>
-                            <td className="p-4">
-                              <select className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
-                                <option>10 AM - 11 AM</option>
-                                <option>11 AM - 12 PM</option>
-                                <option>12 PM - 1 PM</option>
-                                <option>1 PM - 2 PM</option>
-                                <option>2 PM - 3 PM</option>
-                                <option>3 PM - 4 PM</option>
-                                <option>4 PM - 5 PM</option>
-                                <option>5 PM - 6 PM</option>
-                              </select>
-                            </td>
-                            <td className="p-4">
-                              <input
-                                type="date"
-                                className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-                              />
-                            </td>
-                            <td className="p-4">
-                              <button className="text-sm font-medium text-white bg-cyan-600 hover:bg-cyan-700 rounded-lg p-2">
-                                Book
-                              </button>
-                            </td>
-                          </tr>
-                          {/* <!-- Additional service rows as needed --> */}
+                          {services.map((service) => (
+                            <tr key={service._id}>
+                              <td className="p-4">{service.serviceName}</td>
+                              <td className="p-4">{service.charges}</td>
+                              <td className="p-4">
+                                <input
+                                  type="date"
+                                  className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                                  onChange={(e) =>
+                                    handleDateChange(e, service._id)
+                                  }
+                                  value={selectedDates[service._id]}
+                                />
+                              </td>
+                              <td className="p-4">
+                                <select
+                                  className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                                  value={selectedTime}
+                                  onChange={(e) =>
+                                    setSelectedTime(e.target.value)
+                                  }
+                                >
+                                  <option value="">Select a time slot</option>
+
+                                  {getTimeSlotsForDay(
+                                    service,
+                                    getDayOfWeek(selectedDates[service._id])
+                                  )}
+                                </select>
+                              </td>
+                              <td className="p-4">
+                                <button
+                                  className="text-sm font-medium text-white bg-cyan-600 hover:bg-cyan-700 rounded-lg p-2"
+                                  onClick={() =>
+                                    bookAppointment(
+                                      service.serviceName,
+                                      service.charges,
+                                      selectedDates[service._id],
+                                      selectedTime
+                                    )
+                                  }
+                                >
+                                  Book
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
                         </tbody>
                       </table>
                     </div>

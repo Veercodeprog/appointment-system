@@ -8,13 +8,14 @@ import { useNavigate, useLocation } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
 const Users = () => {
   const { auth } = useAuth();
+  const [selectedRole, setSelectedRole] = useState({}); // State to hold selected roles
 
   // Example logic based on roles
   const isAdmin = auth.roles.includes(2002);
   const isSubAdmin = auth.roles.includes(2003);
   const isCustomer = auth.roles.includes(2001);
 
-  const [users, setUsers] = useState();
+  const [users, setUsers] = useState([]);
   const axiosPrivate = useAxiosPrivate();
   const refresh = useRefreshToken();
   const navigate = useNavigate();
@@ -29,6 +30,7 @@ const Users = () => {
         });
         console.log("response", response.data);
         isMounted && setUsers(response.data);
+        console.log("users", users);
       } catch (err) {
         console.log("err", err);
         return navigate("/login", { state: { from: location }, replace: true });
@@ -40,6 +42,43 @@ const Users = () => {
       controller.abort();
     };
   }, []);
+  const handleChangeRole = async (userId, newRole, roleCode) => {
+    if (!isAdmin && !isSubAdmin) {
+      console.error("Unauthorized to change user roles");
+      return;
+    }
+
+    try {
+      const response = await axiosPrivate.put(`/users/${userId}/role`, {
+        newRole,
+        roleCode,
+      });
+
+      // Handle success
+      console.log("Role updated successfully:", response.data);
+    } catch (error) {
+      console.error("Error updating role:", error);
+      // Handle error
+    }
+  };
+
+  const handleDeleteUser = async (userId) => {
+    if (!isAdmin) {
+      console.error("Unauthorized to delete users");
+      return;
+    }
+
+    try {
+      const response = await axiosPrivate.delete(`/users/${userId}`);
+
+      // Handle success
+      console.log("User deleted successfully:", response.data);
+      // Update users list after deletion if needed
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      // Handle error
+    }
+  };
 
   return (
     <AdminProvider>
@@ -118,29 +157,183 @@ const Users = () => {
                           </tr>
                         </thead>
                         <tbody className="bg-white">
-                          <tr>
-                            <td className="p-2">1</td>
-                            <td className="p-4">username1</td>
-                            <td className="p-4">email1@example.com</td>
-                            <td className="p-2">
-                              <select className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
-                                <option value="customer">Customer</option>
-                                <option value="subadmin">Subadmin</option>
-                                <option value="admin">Admin</option>
-                              </select>
-                            </td>
-                            <td className="p-4">
-                              <button className="text-indigo-600 hover:text-indigo-900">
-                                Change Role
-                              </button>
-                            </td>
-                            <td className="p-4">
-                              <button className="text-red-600 hover:text-red-900">
-                                Delete User
-                              </button>
-                            </td>
-                          </tr>
                           {/* <!-- Additional user rows as needed --> */}
+                          {users.map((user, index) => (
+                            <tr
+                              key={user._id}
+                              className={
+                                index % 2 === 0 ? "bg-gray-100" : "bg-white"
+                              }
+                            >
+                              <td className="p-2">{index + 1}</td>
+                              <td className="p-4">{user.username}</td>
+                              <td className="p-4">{user.email}</td>
+                              {/* <td className="p-2"> */}
+                              {/*   <select */}
+                              {/*     className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md" */}
+                              {/*     value={user.roles[0]} // Assuming user.roles is an array and you want the first role as default */}
+                              {/*     onChange={(e) => */}
+                              {/*       handleChangeRole(user._id, e.target.value) */}
+                              {/*     } */}
+                              {/*   > */}
+                              {/*     {/* Check for Admin role */}
+                              {/*     {user.roles.includes(2002) && ( */}
+                              {/*       <> */}
+                              {/*         <option key="admin" value="Admin"> */}
+                              {/*           Admin */}
+                              {/*         </option> */}
+                              {/*         <option key="subadmin" value="Subadmin"> */}
+                              {/*           Subadmin */}
+                              {/*         </option> */}
+                              {/*         <option key="customer" value="Customer"> */}
+                              {/*           Customer */}
+                              {/*         </option> */}
+                              {/*       </> */}
+                              {/*     )} */}
+                              {/*     {/* Check for Subadmin role */}
+                              {/*     {user.roles.includes(2003) && */}
+                              {/*       !user.roles.includes(2002) && ( */}
+                              {/*         <> */}
+                              {/*           <option key="subadmin" value="Subadmin"> */}
+                              {/*             Subadmin */}
+                              {/*           </option> */}
+                              {/*           <option key="customer" value="Customer"> */}
+                              {/*             Customer */}
+                              {/*           </option> */}
+                              {/*           <option key="admin" value="Admin"> */}
+                              {/*             Admin */}
+                              {/*           </option> */}
+                              {/*         </> */}
+                              {/*       )} */}
+                              {/*     {/* Check for Customer role */}
+                              {/*     {user.roles.includes(2001) && */}
+                              {/*       !user.roles.includes(2002) && */}
+                              {/*       !user.roles.includes(2003) && ( */}
+                              {/*         <> */}
+                              {/*           <option key="customer" value="Customer"> */}
+                              {/*             Customer */}
+                              {/*           </option> */}
+                              {/*           <option key="subadmin" value="Subadmin"> */}
+                              {/*             Subadmin */}
+                              {/*           </option> */}
+                              {/*           <option key="admin" value="Admin"> */}
+                              {/*             Admin */}
+                              {/*           </option> */}
+                              {/*         </> */}
+                              {/*       )} */}
+                              {/*   </select> */}
+                              {/* </td> */}
+                              <td className="p-2">
+                                <select
+                                  className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                                  value={user.role}
+                                  onChange={(e) =>
+                                    handleChangeRole(
+                                      user._id,
+                                      e.target.value,
+                                      e.target.options[
+                                        e.target.selectedIndex
+                                      ].getAttribute("rolecode")
+                                    )
+                                  }
+                                >
+                                  {user.roles.hasOwnProperty("Admin") && (
+                                    <>
+                                      <option
+                                        key="admin"
+                                        value="Admin"
+                                        rolecode="2002"
+                                      >
+                                        Admin
+                                      </option>
+                                      <option
+                                        key="subadmin"
+                                        value="Subadmin"
+                                        rolecode="2001"
+                                      >
+                                        Subadmin
+                                      </option>
+                                      <option
+                                        key="customer"
+                                        value="Customer"
+                                        rolecode="2003"
+                                      >
+                                        Customer
+                                      </option>
+                                    </>
+                                  )}
+                                  {/* Check for Subadmin role */}
+                                  {user.roles.hasOwnProperty("Subadmin") &&
+                                    !user.roles.hasOwnProperty("Admin") && (
+                                      <>
+                                        <option
+                                          key="subadmin"
+                                          value="Subadmin"
+                                          rolecode="2001"
+                                        >
+                                          Subadmin
+                                        </option>
+                                        <option
+                                          key="customer"
+                                          value="Customer"
+                                          rolecode="2003"
+                                        >
+                                          Customer
+                                        </option>
+                                        <option
+                                          key="admin"
+                                          value="Admin"
+                                          rolecode="2002"
+                                        >
+                                          Admin
+                                        </option>
+                                      </>
+                                    )}
+                                  {/* Check for Customer role */}
+                                  {user.roles.Customer &&
+                                    !user.roles.Admin &&
+                                    !user.roles.Subadmin && (
+                                      <>
+                                        <option
+                                          key="customer"
+                                          value="Customer"
+                                          rolecode="2003"
+                                        >
+                                          Customer
+                                        </option>
+                                        <option
+                                          key="subadmin"
+                                          value="Subadmin"
+                                          rolecode="2001"
+                                        >
+                                          Subadmin
+                                        </option>
+                                        <option
+                                          key="admin"
+                                          value="Admin"
+                                          rolecode="2002"
+                                        >
+                                          Admin
+                                        </option>
+                                      </>
+                                    )}
+                                </select>
+                              </td>
+                              <td className="p-4">
+                                <button className="text-indigo-600 hover:text-indigo-900">
+                                  Change Role
+                                </button>
+                              </td>
+                              <td className="p-4">
+                                <button
+                                  onClick={() => handleDeleteUser(user._id)}
+                                  className="text-red-600 hover:text-red-900"
+                                >
+                                  Delete User
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
                         </tbody>
                       </table>
                     </div>

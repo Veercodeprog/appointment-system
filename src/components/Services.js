@@ -1,6 +1,132 @@
 import React from "react";
 import AdminProvider from "./adminProvider";
+import { useState } from "react";
+import AddServiceModal from "./subs/AddServiceModal"; // Create AddServiceModal component separately
+import EditServiceModal from "./subs/EditServiceModal"; // Create EditServiceModal component separately
+import useAxiosPrivate from "../hooks/useAxiosPrivate";
+import { useEffect } from "react";
+import TimingSlotsModal from "./subs/TimingSlotsModal"; // Create TimingSlotsModal component separately
 const Services = () => {
+  const [serviceId, setServiceId] = useState("");
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [serviceName, setServiceName] = useState("");
+  const [charges, setCharges] = useState("");
+  const [timingSlots, setTimingSlots] = useState("");
+  const axiosPrivate = useAxiosPrivate();
+  const [editingService, setEditingService] = useState(null); // To store service being edited
+  const [services, setServices] = useState([]);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isTimingSlotsModalOpen, setIsTimingSlotsModalOpen] = useState(false);
+  useEffect(() => {
+    getAllServices();
+  }, [timingSlots]);
+
+  const openTimingSlotsModal = (service) => {
+    console.log("ServiceId:", service._id);
+    setServiceId(service._id);
+    setServiceName(service);
+    setTimingSlots(service.timingSlots);
+    setIsTimingSlotsModalOpen(true);
+  };
+
+  const closeTimingSlotsModal = () => {
+    setIsTimingSlotsModalOpen(false);
+    setServiceName("");
+    setTimingSlots("");
+    setServiceId("");
+  };
+
+  // Fetch services on component mount
+
+  const openAddModal = () => {
+    setIsAddModalOpen(true);
+  };
+
+  const closeAddModal = () => {
+    setIsAddModalOpen(false);
+    clearForm(); // Clear form fields on close
+  };
+
+  const openEditModal = (service) => {
+    setServiceName(service.serviceName);
+    setCharges(service.charges);
+    setTimingSlots(service.timingSlots.join(", ")); // Convert timing slots array to string for initial state
+    setEditingService(service); // Set the service being edited
+    setIsEditModalOpen(true); // Open modal for editing
+  };
+
+  const closeEditModal = () => {
+    setIsEditModalOpen(false);
+    setEditingService(null); // Clear editing state when closing modal
+  };
+
+  const clearForm = () => {
+    setServiceName("");
+    setCharges("");
+    setTimingSlots("");
+  };
+
+  const getAllServices = async () => {
+    try {
+      const response = await axiosPrivate.get("/services");
+      setServices(response.data);
+      console.log("Services:", response.data);
+    } catch (error) {
+      console.error("Error getting services:", error);
+      // Handle error as needed
+      // Handle error as needed
+    }
+  };
+
+  const handleAddService = async () => {
+    try {
+      const response = await axiosPrivate.post("/addservice", {
+        serviceName,
+        charges,
+      });
+
+      console.log("Service added:", response.data);
+      closeAddModal(); // Close modal after successful addition
+      getAllServices(); // Update service list after addition
+    } catch (error) {
+      console.error("Error adding service:", error);
+      // Handle error as needed
+    }
+  };
+  const handleEditService = async (editedService) => {
+    try {
+      const response = await axiosPrivate.put(
+        `/services/${editingService._id}`,
+        {
+          serviceName: editedService.serviceName,
+          charges: editedService.charges,
+        }
+      );
+
+      console.log("service updated:", response.data);
+      closeEditModal(); // close modal after successful update
+      getAllServices(); // refresh services list
+    } catch (error) {
+      console.error("error editing service:", error);
+      // handle error as needed
+    }
+  };
+  const handleDeleteService = async (serviceId) => {
+    if (window.confirm("Are you sure you want to delete this service?")) {
+      try {
+        await axiosPrivate.delete(`/services/${serviceId}`);
+        console.log("Service deleted successfully");
+        getAllServices(); // Refresh services list after deletion
+      } catch (error) {
+        console.error("Error deleting service:", error);
+        // Handle error as needed
+      }
+    }
+  };
+
+  useEffect(() => {
+    getAllServices();
+  }, []);
   return (
     <AdminProvider>
       <main className="w-full">
@@ -17,7 +143,10 @@ const Services = () => {
                   </span>
                 </div>
                 <div className="flex-shrink-0">
-                  <button className="text-sm font-medium text-white bg-cyan-600 hover:bg-cyan-700 rounded-lg p-2">
+                  <button
+                    className="text-sm font-medium text-white bg-cyan-600 hover:bg-cyan-700 rounded-lg p-2"
+                    onClick={openAddModal}
+                  >
                     Add New Service
                   </button>
                 </div>
@@ -56,38 +185,40 @@ const Services = () => {
                           </tr>
                         </thead>
                         <tbody className="bg-white">
-                          <tr>
-                            <td className="p-4">Service 1</td>
-                            <td className="p-4">$100</td>
-                            <td className="p-4">9 AM - 5 PM</td>
-                            <td className="p-4 space-x-2">
-                              <button className="text-indigo-600 hover:text-indigo-900">
-                                Edit
-                              </button>
-                              <button className="text-green-600 hover:text-green-900">
-                                Add Timing Slot
-                              </button>
-                              <button className="text-red-600 hover:text-red-900">
-                                Delete Timing Slot
-                              </button>
-                            </td>
-                          </tr>
-                          <tr>
-                            <td className="p-4">Service 2</td>
-                            <td className="p-4">$150</td>
-                            <td className="p-4">10 AM - 6 PM</td>
-                            <td className="p-4 space-x-2">
-                              <button className="text-indigo-600 hover:text-indigo-900">
-                                Edit
-                              </button>
-                              <button className="text-green-600 hover:text-green-900">
-                                Add Timing Slot
-                              </button>
-                              <button className="text-red-600 hover:text-red-900">
-                                Delete Timing Slot
-                              </button>
-                            </td>
-                          </tr>
+                          {services.map((service) => (
+                            <tr>
+                              <td className="p-4">{service.serviceName}</td>
+                              <td className="p-4">${service.charges}</td>
+                              <td className="p-4">
+                                <label className="block text-sm font-medium text-gray-700">
+                                  {/* Timing Slots */}
+                                </label>
+                                <button
+                                  type="button"
+                                  onClick={() => openTimingSlotsModal(service)} // Use arrow function to prevent immediate execution
+                                  className="ml-2 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                                >
+                                  Show Timing Slots
+                                </button>
+                              </td>
+                              <td className="p-4 space-x-2">
+                                <button
+                                  className=" bg-indigo-500 hover:bg-indigo-600 text-white px-2 py-1 rounded-lg"
+                                  onClick={() => openEditModal(service)}
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  className=" bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded-lg"
+                                  onClick={() =>
+                                    handleDeleteService(service._id)
+                                  }
+                                >
+                                  Delete Service
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
                           {/* <!-- Additional service rows as needed --> */}
                         </tbody>
                       </table>
@@ -99,6 +230,37 @@ const Services = () => {
           </div>
         </div>
       </main>
+      {isAddModalOpen && (
+        <AddServiceModal
+          serviceName={serviceName}
+          setServiceName={setServiceName}
+          charges={charges}
+          setCharges={setCharges}
+          timingSlots={timingSlots}
+          setTimingSlots={setTimingSlots}
+          closeModal={closeAddModal}
+          handleAddService={handleAddService}
+        />
+      )}
+      {isTimingSlotsModalOpen && (
+        <TimingSlotsModal
+          serviceId={serviceId}
+          currentTimingSlots={serviceName.timingSlots}
+          setTimingSlots={setTimingSlots}
+          timingSlots={timingSlots}
+          closeModal={closeTimingSlotsModal}
+        />
+      )}
+      {isEditModalOpen && (
+        <EditServiceModal
+          service={editingService}
+          closeModal={closeEditModal}
+          setServiceName={setServiceName}
+          setCharges={setCharges}
+          setTimingSlots={setTimingSlots}
+          handleEditService={handleEditService}
+        />
+      )}{" "}
     </AdminProvider>
   );
 };
